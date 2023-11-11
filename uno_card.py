@@ -30,15 +30,20 @@ class Carta:
         if self.cor == Color.PRET:
             return f"{self.simbolo}"
 
-cartas = []
+# cartas = []
 
-for c in range(4):
-    for n in range(10):
-        cartas.append(Carta(Color(c), str(n)))
-    cartas.append(Carta(Color(c), '⇆'))
-    cartas.append(Carta(Color(c), 'Ø'))
-    cartas.append(Carta(Color(c), '+2'))
+# for _ in range(2):
+#     for c in range(4):
+#         for n in range(10):
+#             cartas.append(Carta(Color(c), str(n)))
+#         cartas.append(Carta(Color(c), '⇆'))
+#         cartas.append(Carta(Color(c), 'Ø'))
+#         cartas.append(Carta(Color(c), '+2'))
+
+# for _ in range(4):
+#     cartas.append(Carta(Color(4), '⊕'))
+#     cartas.append(Carta(Color(4), '+4'))
 
 
-for c in cartas:
-    print(c)
+# for c in cartas:
+#     print(c)
