@@ -10,4 +10,16 @@ class Color(Enum):
 class TipoMsg(Enum):
     MSGSIMPLES = 0
     PRONTO = 1
-    CARTAS = 2
+    MAODECARTAS = 2
+    CARTATOPO = 3
+    JOGADORVEZ = 4
+    QTDCARTASJOGADORES = 5
+    IDJOGADOR = 6
+    JOGARCARTA = 7
+    PULARVEZ = 8
+    COMPRARCARTA = 9
+
+# class AcaoRodada(Enum):
+#     JOGAR = 0
+#     PULAR = 1
+#     COMPRAR = 2

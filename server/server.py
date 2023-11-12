@@ -3,13 +3,11 @@ sys.path.append('../')
 from config import MSG_SIZE, TIMEOUT, QTD_CARTAS_INICIAIS
 from card import Carta
 from enums import Color, TipoMsg
-from msg import Msg
+from msg import Msg, Jogador
 
 class Jogo:
     def __init__(self):
         self.ativo = False
-
-
 
 def criaBaralho():
     for _ in range(2):
@@ -27,85 +25,95 @@ def criaBaralho():
 def embaralhaBaralho():
     random.shuffle(cartasAJogar)
 
-def sorteaCartasParaJogadores(num_clientes):
-    global maosClientes, cartasAJogar
-    maosClientes.clear()
-    for i in range(num_clientes):
-        maosClientes.append([])
+def sorteaEnviaMaosParaJogadores():
+    global cartasAJogar, clientes
+    for c in clientes:
+        mao = []
         for _ in range(QTD_CARTAS_INICIAIS):
             # fazer validacao se cartasAJogar não está vazia; se estiver, chamar processo de reembaralhar pilha
-            maosClientes[i].append(cartasAJogar.pop())
+            mao.append(cartasAJogar.pop())   
+        c.conn.send(pickle.dumps([Msg(TipoMsg.MAODECARTAS, mao)]))
 
-def enviaMaosParaJogadores():
-    global clientes
-    for c in range(len(clientes)):
-        print("Enviando mãos aos jogadores...")
-        pick = pickle.dumps(Msg(TipoMsg.CARTAS, maosClientes[c]))
-        print(clientes[c].send(pick))
-        # clientes[c].send(pickle.dumps(maosClientes[c]))
-        # clientes[c].send(json.dumps(vars(maosClientes[c])).encode())
-        
-
-def handle_client(conn):
+def handle_client(jogador):
     global clientes, clientes_prontos, jogo
     falhas = 0
+    conn = jogador.conn
     while jogo.ativo == False:
         try:
-            # conn.send("Você está pronto?".encode())
-            conn.send(pickle.dumps(Msg(TipoMsg.PRONTO, "Você está pronto?")))
+            listMsg = [Msg(TipoMsg.PRONTO, "Você está pronto?"),
+                       Msg(TipoMsg.IDJOGADOR, len(clientes))]
+            conn.send(pickle.dumps(listMsg))
             conn.settimeout(TIMEOUT)
             data = conn.recv(MSG_SIZE)
             msg = pickle.loads(data)
             if msg:
                 if msg.tipo == TipoMsg.PRONTO and type(msg.conteudo) == type(True) and msg.conteudo == True:
-                    clientes_prontos.append(conn)
+                    clientes_prontos.append(jogador)
                     wait_for_game_start(conn)
         except socket.timeout:
             falhas += 1
             print("Conexão com o cliente {} expirou ({}/4)".format(conn.getpeername(), falhas))
             if falhas == 4:
                 print("Jogador caiu")
-                if conn in clientes:
-                    clientes.remove(conn)
-                if conn in clientes_prontos:
-                    clientes_prontos.remove(conn)
+                if jogador in clientes:
+                    clientes.remove(jogador)
+                if jogador in clientes_prontos:
+                    clientes_prontos.remove(jogador)
                 conn.close()
                 break
         except ConnectionResetError:
             print("Um dos jogadores desconectou")
-            if conn in clientes:
-                clientes.remove(conn)
-            if conn in clientes_prontos:
-                clientes_prontos.remove(conn)
+            if jogador in clientes:
+                clientes.remove(jogador)
+            if jogador in clientes_prontos:
+                clientes_prontos.remove(jogador)
             break
 
 def wait_for_game_start(conn):
     global clientes, clientes_prontos, jogo
     while len(clientes_prontos) < len(clientes) or len(clientes) < 2 and len(clientes) > 0:
-        conn.send(pickle.dumps(Msg(TipoMsg.MSGSIMPLES, "Aguardando jogadores ficarem prontos: {}/{}".format(len(clientes_prontos), len(clientes)))))
-        # conn.send("Aguardando jogadores ficarem prontos: {}/{}".format(len(clientes_prontos), len(clientes)).encode())
+        conn.send(pickle.dumps([Msg(TipoMsg.MSGSIMPLES, "Aguardando jogadores ficarem prontos: {}/{}".format(len(clientes_prontos), len(clientes)))]))
         if(len(clientes) < 2):
-            conn.send(pickle.dumps(Msg(TipoMsg.MSGSIMPLES, "Aguardando mais jogadores (mínimo 2)")))
-            # conn.send("Aguardando mais jogadores (mínimo 2)".encode())
+            conn.send(pickle.dumps([Msg(TipoMsg.MSGSIMPLES, "Aguardando mais jogadores (mínimo 2)")]))
         time.sleep(5)
-    conn.send(pickle.dumps(Msg(TipoMsg.MSGSIMPLES , "Jogo iniciando...")))
-    # conn.send("Jogo iniciando...".encode())
+    conn.send(pickle.dumps([Msg(TipoMsg.MSGSIMPLES , "Jogo iniciando...")]))
     jogo.ativo = True
 
 def start_game():
     global clientes, jogo
     print("Jogo iniciado")
     criaBaralho()
-    print("Tamanho do baralho: ", len(cartasAJogar))
     embaralhaBaralho()
-    sorteaCartasParaJogadores(len(clientes))
+    sorteaEnviaMaosParaJogadores()
     cartasJogadas.append(cartasAJogar.pop())
-    enviaMaosParaJogadores()
-    # while jogo.ativo:
-    #     for cliente in clientes:
-    #         print("Enviando mensagem para", cliente.getpeername())
-    #         cliente.send("Aguardando lógica do jogo ser implementada...".encode())
-    #     time.sleep(5)
+    jogadorDaRodada = 1
+    while jogo.ativo:
+        for cliente in clientes:
+            print("Enviando mensagem para", cliente.conn.getpeername())
+            listMsg = [Msg(TipoMsg.CARTATOPO, cartasJogadas[-1]),
+                       Msg(TipoMsg.JOGADORVEZ, jogadorDaRodada)]
+            # colocar qtd de cartas de cada jogador
+            cliente.conn.send(pickle.dumps(listMsg))
+
+        # espera resposta do jogador da vez 
+        data = clientes[jogadorDaRodada - 1].conn.recv(MSG_SIZE)
+        msg = pickle.loads(data)
+        if msg.tipo == TipoMsg.JOGARCARTA:
+            print("Jogador", jogadorDaRodada, "jogou a carta", msg.conteudo)
+            cartasJogadas.append(msg.conteudo)
+            jogadorDaRodada = 1 if jogadorDaRodada >= len(clientes) else jogadorDaRodada + 1
+        elif msg.tipo == TipoMsg.COMPRARCARTA:
+            print("Jogador", jogadorDaRodada, "comprou uma carta")
+            clientes[jogadorDaRodada - 1].conn.send(pickle.dumps(Msg(TipoMsg.COMPRARCARTA, cartasAJogar.pop())))
+            data2 = clientes[jogadorDaRodada - 1].conn.recv(MSG_SIZE)
+            msg2 = pickle.loads(data2)
+            if msg2.tipo == TipoMsg.JOGARCARTA:
+                print("Jogador", jogadorDaRodada, "jogou a carta", msg2.conteudo)
+                cartasJogadas.append(msg2.conteudo)
+            elif msg2.tipo == TipoMsg.PULARVEZ:
+                print("Jogador", jogadorDaRodada, "pulou a vez")
+            jogadorDaRodada = 1 if jogadorDaRodada >= len(clientes) else jogadorDaRodada + 1
+        time.sleep(5)
 
 def start():
     print("Servidor iniciado")
@@ -121,9 +129,10 @@ def start():
         try:
             conn, addr = servidor.accept()
             print("Conectado a", addr)
-            clientes.append(conn)
+            jogador = Jogador(conn, QTD_CARTAS_INICIAIS)
+            clientes.append(jogador)
             print("Clientes:", len(clientes))
-            thread = threading.Thread(target=handle_client, args=(conn,))
+            thread = threading.Thread(target=handle_client, args=(jogador,))
             thread.start()
         except socket.timeout:
             if jogo.ativo == False:
