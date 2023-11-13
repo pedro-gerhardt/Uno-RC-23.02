@@ -22,16 +22,24 @@ def criaBaralho():
         cartasAJogar.append(Carta(Color(4), '⊕'))
         cartasAJogar.append(Carta(Color(4), '+4'))
 
-def embaralhaBaralho():
-    random.shuffle(cartasAJogar)
+def embaralhaBaralho(baralho):
+    random.shuffle(baralho)
 
+def pescaDoBaralho():
+    global cartasAJogar, cartasJogadas
+    if len(cartasAJogar) < 1 and len(cartasJogadas) > 0:
+        cartasAJogar = cartasJogadas
+        cartasJogadas = []
+        embaralhaBaralho(cartasAJogar)
+    return cartasAJogar.pop()
+        
 def sorteaEnviaMaosParaJogadores():
     global cartasAJogar, clientes
     for c in clientes:
         mao = []
         for _ in range(QTD_CARTAS_INICIAIS):
             # fazer validacao se cartasAJogar não está vazia; se estiver, chamar processo de reembaralhar pilha
-            mao.append(cartasAJogar.pop())   
+            mao.append(pescaDoBaralho())   
         c.conn.send(pickle.dumps([Msg(TipoMsg.MAODECARTAS, mao)]))
 
 def handle_client(jogador):
@@ -83,9 +91,9 @@ def start_game():
     global clientes, jogo
     print("Jogo iniciado")
     criaBaralho()
-    embaralhaBaralho()
+    embaralhaBaralho(cartasAJogar)
     sorteaEnviaMaosParaJogadores()
-    cartasJogadas.append(cartasAJogar.pop())
+    cartasJogadas.append(pescaDoBaralho())
     jogadorDaRodada = 1
     while jogo.ativo:
         for cliente in clientes:
@@ -104,7 +112,7 @@ def start_game():
             jogadorDaRodada = 1 if jogadorDaRodada >= len(clientes) else jogadorDaRodada + 1
         elif msg.tipo == TipoMsg.COMPRARCARTA:
             print("Jogador", jogadorDaRodada, "comprou uma carta")
-            clientes[jogadorDaRodada - 1].conn.send(pickle.dumps(Msg(TipoMsg.COMPRARCARTA, cartasAJogar.pop())))
+            clientes[jogadorDaRodada - 1].conn.send(pickle.dumps(Msg(TipoMsg.COMPRARCARTA, pescaDoBaralho())))
             data2 = clientes[jogadorDaRodada - 1].conn.recv(MSG_SIZE)
             msg2 = pickle.loads(data2)
             if msg2.tipo == TipoMsg.JOGARCARTA:
