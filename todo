@@ -6,4 +6,5 @@ a fazer:
         - se Ø, pular próximo jogador
         - se ⊕ ou +4, filtrar próxima carta pela cor
     - tratar vitoria, caso jogador chegar a 0 cartas
-    - enviar quantidade de cartas de todos jogadores para todos jogadores 
+    - enviar quantidade de cartas de todos jogadores para todos jogadores
+     

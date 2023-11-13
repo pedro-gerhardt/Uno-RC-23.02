@@ -38,7 +38,6 @@ def sorteaEnviaMaosParaJogadores():
     for c in clientes:
         mao = []
         for _ in range(QTD_CARTAS_INICIAIS):
-            # fazer validacao se cartasAJogar não está vazia; se estiver, chamar processo de reembaralhar pilha
             mao.append(pescaDoBaralho())   
         c.conn.send(pickle.dumps([Msg(TipoMsg.MAODECARTAS, mao)]))
 
