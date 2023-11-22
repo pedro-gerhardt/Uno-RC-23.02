@@ -23,13 +23,16 @@ def criaBaralho():
         cartasAJogar.append(Carta(Color(4), '+4'))
 
 def embaralhaBaralho(baralho):
+    for carta in baralho:
+        if carta.simbolo == '+4' or carta.simbolo == '⊕':
+            carta.cor = Color(4)
     random.shuffle(baralho)
 
 def pescaDoBaralho():
     global cartasAJogar, cartasJogadas
     if len(cartasAJogar) < 1 and len(cartasJogadas) > 0:
-        cartasAJogar = cartasJogadas
-        cartasJogadas = []
+        cartasAJogar = cartasJogadas[:-1]
+        cartasJogadas = cartasJogadas[-1]
         embaralhaBaralho(cartasAJogar)
     return cartasAJogar.pop()
         
@@ -42,19 +45,35 @@ def sorteaEnviaMaosParaJogadores():
         c.conn.send(pickle.dumps([Msg(TipoMsg.MAODECARTAS, mao)]))
 
 def jogouCarta(jogadorDaRodada, carta):
-    global clientes, cartasJogadas
+    global clientes, cartasJogadas, sentidoJogo
     print("Jogador", jogadorDaRodada, "jogou a carta", carta)
     cartasJogadas.append(carta)
     if carta.simbolo == '⇆':
-        
+        if len(clientes) == 2:
+            validarJogadorDaRodada()
+        else:
+            sentidoJogo = not sentidoJogo
     elif carta.simbolo == 'Ø':
-
+        validarJogadorDaRodada()
     elif carta.simbolo == '+2':
-        
-    elif carta.simbolo == '⊕':
-        
+        validarJogadorDaRodada()
+        for _ in range(2):
+            comprouCarta()
     elif carta.simbolo == '+4':
+        validarJogadorDaRodada()
+        for _ in range(4):
+            comprouCarta()
 
+def comprouCarta():
+    print("Jogador", jogadorDaRodada, "comprou uma carta")
+    clientes[jogadorDaRodada - 1].conn.send(pickle.dumps(Msg(TipoMsg.COMPRARCARTA, pescaDoBaralho())))
+
+def validarJogadorDaRodada():
+    global clientes, sentidoJogo, jogadorDaRodada
+    if sentidoJogo:
+        jogadorDaRodada = 1 if jogadorDaRodada >= len(clientes) else jogadorDaRodada + 1
+    else:
+        jogadorDaRodada = len(clientes) if jogadorDaRodada == 1 else jogadorDaRodada - 1
 
 def handle_client(jogador):
     global clientes, clientes_prontos, jogo
@@ -102,13 +121,12 @@ def wait_for_game_start(conn):
     jogo.ativo = True
 
 def start_game():
-    global clientes, jogo, cartasJogadas
+    global clientes, jogo, cartasJogadas, jogadorDaRodada
     print("Jogo iniciado")
     criaBaralho()
     embaralhaBaralho(cartasAJogar)
     sorteaEnviaMaosParaJogadores()
     cartasJogadas.append(pescaDoBaralho())
-    jogadorDaRodada = 1
     while jogo.ativo:
         for cliente in clientes:
             print("Enviando mensagem para", cliente.conn.getpeername())
@@ -122,17 +140,16 @@ def start_game():
         msg = pickle.loads(data)
         if msg.tipo == TipoMsg.JOGARCARTA:
             jogouCarta(jogadorDaRodada, msg.conteudo)
-            jogadorDaRodada = 1 if jogadorDaRodada >= len(clientes) else jogadorDaRodada + 1
+            validarJogadorDaRodada()
         elif msg.tipo == TipoMsg.COMPRARCARTA:
-            print("Jogador", jogadorDaRodada, "comprou uma carta")
-            clientes[jogadorDaRodada - 1].conn.send(pickle.dumps(Msg(TipoMsg.COMPRARCARTA, pescaDoBaralho())))
+            comprouCarta()
             data2 = clientes[jogadorDaRodada - 1].conn.recv(MSG_SIZE)
             msg2 = pickle.loads(data2)
             if msg2.tipo == TipoMsg.JOGARCARTA:
                 jogouCarta(jogadorDaRodada, msg2.conteudo)
             elif msg2.tipo == TipoMsg.PULARVEZ:
                 print("Jogador", jogadorDaRodada, "pulou a vez")
-            jogadorDaRodada = 1 if jogadorDaRodada >= len(clientes) else jogadorDaRodada + 1
+            validarJogadorDaRodada()
         time.sleep(5)
 
 def start():
@@ -164,6 +181,7 @@ clientes_prontos = []
 jogo = None
 cartasAJogar = []
 cartasJogadas = []
-maosClientes = []
+sentidoJogo = False
+jogadorDaRodada = 1
 
 start()

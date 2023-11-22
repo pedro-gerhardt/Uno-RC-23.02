@@ -39,8 +39,11 @@ def jogaCarta():
                     compraCarta()
                     break
                 continue
-            server_socket.send(pickle.dumps(Msg(TipoMsg.JOGARCARTA, mao[idx])))
-            print("Você jogou a carta", mao.pop(idx))
+            if cartaJogada.cor == Color(4):
+                cartaJogada = selecionaCor(cartaJogada)
+            server_socket.send(pickle.dumps(Msg(TipoMsg.JOGARCARTA, cartaJogada)))
+            mao.pop(idx)
+            print("Você jogou a carta", cartaJogada)
             break
         else:
             idx = int(input("Carta seleciona está fora do range! Escolha outra: "))
@@ -54,9 +57,17 @@ def validaMao():
 
 def validaCarta(carta):
     global cartaTopo
-    if (carta.cor == cartaTopo.cor) or (carta.simbolo == cartaTopo.simbolo) or (carta.cor == Color(4)):
+    if (carta.cor == cartaTopo.cor) or (carta.simbolo == cartaTopo.simbolo) or (carta.cor == Color(4)) or (cartaTopo.cor == Color(4)):
         return True
     return False
+
+def selecionaCor(cartaJogada):
+    while True:
+        cor = int(input("\nSelecione uma cor (0 - Vermelho / 1 - Verde / 2 - Amarelo / 3 - Azul): "))
+        if cor in range(0, 4):
+            cartaJogada.cor = Color(cor)
+            return cartaJogada
+        continue
 
 def validaIndex(index):
     global mao
@@ -68,11 +79,20 @@ def compraCarta():
     msg2 = pickle.loads(server_socket.recv(MSG_SIZE))
     mao.append(msg2.conteudo)
     printaMao()
-    opcao = input("Você quer jogar (J) ou pular (P)? ")
-    if opcao == "J":
-        jogaCarta()
-    elif opcao == "P":
+    if not validaMao():
+        print("Carta comprada não pode ser jogada! Pulando a vez...\n")
         pulaVez()
+        return None
+    while True:
+        opcao = input("Você quer jogar uma carta (J) ou pular a vez (P)? ")
+        if opcao == "J":
+            jogaCarta()
+            break
+        elif opcao == "P":
+            pulaVez()
+            break
+        else:
+            print("Opção inválida!")
 
 def start():
     global mao, server_socket, cartaTopo
@@ -82,10 +102,13 @@ def start():
     while True:
         data = memoryview(bytearray(MSG_SIZE))
         bc = server_socket.recv_into(data, MSG_SIZE)
-        # print(bc)
         if bc == 0:
             continue
-        msgs = pickle.loads(data)        
+        msgs = pickle.loads(data)
+        if type(msgs) is not list:
+            if msgs.tipo == TipoMsg.COMPRARCARTA:
+                mao.append(msgs.conteudo)
+                continue
         for msg in msgs:
             if not pronto and msg.tipo == TipoMsg.PRONTO:
                 confirmation = input("Está pronto para jogar? (s/n) ")
@@ -103,16 +126,21 @@ def start():
                 mao = msg.conteudo
             elif msg.tipo == TipoMsg.CARTATOPO:
                 cartaTopo = msg.conteudo
-                print("Carta no topo:", cartaTopo)
+                print("\nCarta no topo:", cartaTopo)
             elif msg.tipo == TipoMsg.JOGADORVEZ:
                 if msg.conteudo != idJogador:
                     print("Vez do jogador", str(msg.conteudo))
                 else:
                     printaMao()
-                    opcao = input("Você quer jogar (J) ou comprar (C)? ")
-                    if opcao == "J":
-                        jogaCarta()
-                    elif opcao == "C":
-                        compraCarta()
+                    while True:
+                        opcao = input("Você quer jogar (J) ou comprar (C)? ")
+                        if opcao == "J":
+                            jogaCarta()
+                            break
+                        elif opcao == "C":
+                            compraCarta()
+                            break
+                        else:
+                            print("Opção inválida!")
 
 start()
