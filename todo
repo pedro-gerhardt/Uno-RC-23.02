@@ -1,5 +1,4 @@
 a fazer:
-    - validações de quais cartas o jogador pode jogar em uma rodada específica
     - no servidor, tratar carta recebida:
         - se carta com +, comprar X cartas para o próximo jogar e pular sua vez
         - se ⇆, inverter ordem dos jogadores
@@ -7,4 +6,5 @@ a fazer:
         - se ⊕ ou +4, filtrar próxima carta pela cor
     - tratar vitoria, caso jogador chegar a 0 cartas
     - enviar quantidade de cartas de todos jogadores para todos jogadores
+    - tratar pescarCarta() para restar a do topo
      

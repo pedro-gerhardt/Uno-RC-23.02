@@ -41,6 +41,21 @@ def sorteaEnviaMaosParaJogadores():
             mao.append(pescaDoBaralho())   
         c.conn.send(pickle.dumps([Msg(TipoMsg.MAODECARTAS, mao)]))
 
+def jogouCarta(jogadorDaRodada, carta):
+    global clientes, cartasJogadas
+    print("Jogador", jogadorDaRodada, "jogou a carta", carta)
+    cartasJogadas.append(carta)
+    if carta.simbolo == '⇆':
+        
+    elif carta.simbolo == 'Ø':
+
+    elif carta.simbolo == '+2':
+        
+    elif carta.simbolo == '⊕':
+        
+    elif carta.simbolo == '+4':
+
+
 def handle_client(jogador):
     global clientes, clientes_prontos, jogo
     falhas = 0
@@ -87,7 +102,7 @@ def wait_for_game_start(conn):
     jogo.ativo = True
 
 def start_game():
-    global clientes, jogo
+    global clientes, jogo, cartasJogadas
     print("Jogo iniciado")
     criaBaralho()
     embaralhaBaralho(cartasAJogar)
@@ -106,8 +121,7 @@ def start_game():
         data = clientes[jogadorDaRodada - 1].conn.recv(MSG_SIZE)
         msg = pickle.loads(data)
         if msg.tipo == TipoMsg.JOGARCARTA:
-            print("Jogador", jogadorDaRodada, "jogou a carta", msg.conteudo)
-            cartasJogadas.append(msg.conteudo)
+            jogouCarta(jogadorDaRodada, msg.conteudo)
             jogadorDaRodada = 1 if jogadorDaRodada >= len(clientes) else jogadorDaRodada + 1
         elif msg.tipo == TipoMsg.COMPRARCARTA:
             print("Jogador", jogadorDaRodada, "comprou uma carta")
@@ -115,8 +129,7 @@ def start_game():
             data2 = clientes[jogadorDaRodada - 1].conn.recv(MSG_SIZE)
             msg2 = pickle.loads(data2)
             if msg2.tipo == TipoMsg.JOGARCARTA:
-                print("Jogador", jogadorDaRodada, "jogou a carta", msg2.conteudo)
-                cartasJogadas.append(msg2.conteudo)
+                jogouCarta(jogadorDaRodada, msg2.conteudo)
             elif msg2.tipo == TipoMsg.PULARVEZ:
                 print("Jogador", jogadorDaRodada, "pulou a vez")
             jogadorDaRodada = 1 if jogadorDaRodada >= len(clientes) else jogadorDaRodada + 1
