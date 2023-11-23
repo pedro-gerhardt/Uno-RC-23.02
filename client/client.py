@@ -33,17 +33,21 @@ def jogaCarta():
             if not validaCarta(cartaJogada):
                 print("Carta seleciona não pode ser jogada!\n")
                 opcao = input("Você quer tentar jogar outra carta (J) ou comprar uma nova (C)? ")
-                if opcao == "J":
+                if opcao.lower() == "j":
                     continue
-                elif opcao == "C":
+                elif opcao.lower() == "c":
                     compraCarta()
                     break
                 continue
             if cartaJogada.cor == Color(4):
                 cartaJogada = selecionaCor(cartaJogada)
-            server_socket.send(pickle.dumps(Msg(TipoMsg.JOGARCARTA, cartaJogada)))
             mao.pop(idx)
             print("Você jogou a carta", cartaJogada)
+            if len(mao) == 0:
+                print("Parabéns!")
+                server_socket.send(pickle.dumps(Msg(TipoMsg.VITORIA, None)))
+                break
+            server_socket.send(pickle.dumps(Msg(TipoMsg.JOGARCARTA, cartaJogada)))
             break
         else:
             idx = int(input("Carta seleciona está fora do range! Escolha outra: "))
@@ -85,10 +89,10 @@ def compraCarta():
         return None
     while True:
         opcao = input("Você quer jogar uma carta (J) ou pular a vez (P)? ")
-        if opcao == "J":
+        if opcao.lower() == "j":
             jogaCarta()
             break
-        elif opcao == "P":
+        elif opcao.lower() == "p":
             pulaVez()
             break
         else:
@@ -109,6 +113,10 @@ def start():
             if msgs.tipo == TipoMsg.COMPRARCARTA:
                 mao.append(msgs.conteudo)
                 continue
+            elif msgs.tipo == TipoMsg.VITORIA:
+                print(msgs.conteudo)
+                print("Jogo encerrado!")
+                break
         for msg in msgs:
             if not pronto and msg.tipo == TipoMsg.PRONTO:
                 confirmation = input("Está pronto para jogar? (s/n) ")
@@ -134,10 +142,10 @@ def start():
                     printaMao()
                     while True:
                         opcao = input("Você quer jogar (J) ou comprar (C)? ")
-                        if opcao == "J":
+                        if opcao.lower() == "j":
                             jogaCarta()
                             break
-                        elif opcao == "C":
+                        elif opcao.lower() == "c":
                             compraCarta()
                             break
                         else:

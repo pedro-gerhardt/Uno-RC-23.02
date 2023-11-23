@@ -18,6 +18,7 @@ class TipoMsg(Enum):
     JOGARCARTA = 7
     PULARVEZ = 8
     COMPRARCARTA = 9
+    VITORIA = 10
 
 # class AcaoRodada(Enum):
 #     JOGAR = 0
